@@ -1,0 +1,113 @@
+import tkinter as tk
+from tkinter import messagebox
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBRegressor
+
+# Load the data
+data = pd.read_excel('ethane.xlsx')  # Replace with the correct file path
+
+# Select features and targets
+X = data[['RF', 'RRF', 'DF', 'C', 'P']]  # Input features
+y_B = data['B']  # Bottom Ethylene Composition
+y_T = data['T']  # Top Ethane Composition
+
+# Scale the features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Initialize and train the XGBoost models with specified hyperparameters
+model_B = XGBRegressor(
+    objective='reg:squarederror',
+    n_estimators=50,
+    learning_rate=0.1,
+    max_depth=3,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42
+)
+model_B.fit(X_scaled, y_B)  # Train the model for Bottom Ethylene Composition
+
+model_T = XGBRegressor(
+    objective='reg:squarederror',
+    n_estimators=200,
+    learning_rate=0.2,
+    max_depth=3,
+    subsample=0.8,
+    colsample_bytree=1.0,
+    random_state=42
+)
+model_T.fit(X_scaled, y_T)  # Train the model for Top Ethane Composition
+
+# Define the prediction function
+def predict_composition():
+    try:
+        # Retrieve user input from entry fields
+        rf_value = float(rf_entry.get())
+        rrf_value = float(rrf_entry.get())
+        df_value = float(df_entry.get())
+        c_value = float(c_entry.get())
+        p_value = float(p_entry.get())
+
+        # Scale the input data
+        input_data = scaler.transform([[rf_value, rrf_value, df_value, c_value, p_value]])
+
+        # Predict the compositions
+        prediction_B = model_B.predict(input_data)[0]
+        prediction_T = model_T.predict(input_data)[0]
+
+        # Display the predictions
+        prediction_label_B.config(text=f"Predicted Ethane Composition: {prediction_B:.2f}")
+        prediction_label_T.config(text=f"Predicted Ethylene Composition: {prediction_T:.2f}")
+
+    except ValueError:
+        messagebox.showerror("Error", "Please enter valid numeric values for all input fields")
+
+
+# Create the main window
+root = tk.Tk()
+root.title("Composition Predictive Model - Developed by Process Control Group, NIT Calicut")
+
+# Set heading in bold, green, and 16 in size
+heading_label = tk.Label(root, text="Composition Predictive Model", font=("Helvetica", 16, "bold"), fg="dark green")
+heading_label.grid(row=0, column=0, columnspan=2)
+
+# Create input fields
+rf_label = tk.Label(root, text="Ratio between the reboiler duty and the Feed flow:")
+rf_label.grid(row=1, column=0)
+rf_entry = tk.Entry(root)
+rf_entry.grid(row=1, column=1)
+
+rrf_label = tk.Label(root, text="Ratio between the Reflux rate and the Feed flow:")
+rrf_label.grid(row=2, column=0)
+rrf_entry = tk.Entry(root)
+rrf_entry.grid(row=2, column=1)
+
+df_label = tk.Label(root, text="Ratio between the Distillate and the Feed flow:")
+df_label.grid(row=3, column=0)
+df_entry = tk.Entry(root)
+df_entry.grid(row=3, column=1)
+
+c_label = tk.Label(root, text="Input ethane composition:")
+c_label.grid(row=4, column=0)
+c_entry = tk.Entry(root)
+c_entry.grid(row=4, column=1)
+
+p_label = tk.Label(root, text="Top pressure:")
+p_label.grid(row=5, column=0)
+p_entry = tk.Entry(root)
+p_entry.grid(row=5, column=1)
+
+# Create predict button
+predict_button = tk.Button(root, text="Predict Composition", command=predict_composition)
+predict_button.grid(row=6, column=0, columnspan=2)
+
+# Create labels to display predictions
+prediction_label_B = tk.Label(root, text="")
+prediction_label_B.grid(row=7, column=0, columnspan=2)
+
+prediction_label_T = tk.Label(root, text="")
+prediction_label_T.grid(row=8, column=0, columnspan=2)
+
+# Run the main event loop
+root.mainloop()
